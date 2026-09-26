@@ -365,9 +365,6 @@ export function createAppServer({
   }
 
   /*
-   * OPTIONAL EMAIL/SMS NOTIFICATIONS ------------------------------------------------------------------------
-   */
-  /*
    * OPTIONAL EMAIL/SMS/PUSH NOTIFICATIONS
    */
   async function notifications(data) {
@@ -487,6 +484,7 @@ export function createAppServer({
 
     // NTFY PUSH NOTIFICATION
     if (config.NTFY_TOPIC) {
+      console.log('NTFY notification triggered for enquiry:', data.email);
       try {
         const message =
           `New MDK appointment enquiry\n\n` +
@@ -540,6 +538,7 @@ export function createAppServer({
       pushAccepted
     };
   }
+
   /*
    * ADMIN SESSION STORAGE ----------------------------------------
    */
