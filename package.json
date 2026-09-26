@@ -1,0 +1,32 @@
+{
+  "name": "mdk-quality-consulting",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:full": "node scripts/dev-full.mjs",
+    "start": "node server/index.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "vite preview --host 127.0.0.1 --configLoader native",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "terser": "^5.51.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "~5.9.2",
+    "vite": "^6.3.5"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

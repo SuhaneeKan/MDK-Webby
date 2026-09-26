@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {scoreAssessment} from '../src/assessment.mjs';
+import {validateEnquiry} from '../src/validate-enquiry.mjs';
+test('assessment score bands and boundaries',()=>{for(const [total,level] of [[0,'Foundation'],[7,'Foundation'],[8,'Developing'],[15,'Developing'],[16,'Controlled'],[23,'Controlled'],[24,'Mature'],[30,'Mature']]){let remaining=total;const a=Array.from({length:10},()=>{const n=Math.min(3,remaining);remaining-=n;return n});const result=scoreAssessment(a);assert.equal(result.total,total);assert.equal(result.level,level)}});
+test('assessment rejects unanswered or invalid values',()=>{for(const a of [[],Array(10).fill(-1),Array(10).fill(4),Array(10).fill(1.5)])assert.throws(()=>scoreAssessment(a))});
+test('weak areas are prioritized and strengths are separate',()=>{const r=scoreAssessment([3,0,2,1,2,3,2,1,3,2]);assert.deepEqual(r.review,[1,3,7]);assert.deepEqual(r.strongest.slice(0,3),[0,5,8])});
+const now=Date.parse('2026-09-16T12:00:00Z');const valid={name:'Test Person',organization:'Example',email:'test@example.com',industry:'FMCG',service:'Training',message:'Training needs discussion.',consent:'yes',started:now-6000,mode:'Online'};
+test('enquiry accepts valid input',()=>assert.equal(validateEnquiry(valid,now),null));
+test('enquiry rejects missing consent, injection shapes, oversized fields and bad dates',()=>{for(const change of [{consent:'no'},{name:{}},{email:'not-email'},{message:'x'.repeat(3001)},{date:'2020-01-01'},{time:'25:00'},{website:'spam'},{started:now}])assert.ok(validateEnquiry({...valid,...change},now))});

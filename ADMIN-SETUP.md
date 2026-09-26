@@ -1,0 +1,13 @@
+# Set up the MDK enquiry inbox
+
+This inbox works on static hosting **after** connecting a Supabase project. It is a shared database: visitor enquiries can be viewed on another device at `/admin`. Without a database, a static site cannot store other visitors' submissions in an admin account. Browser local storage cannot serve this purpose.
+
+1. Create a Supabase project you control. In its SQL Editor, run `supabase/setup.sql` (read the SQL first). It creates an enquiry table and private admin membership table, turns on row level security, grants only `INSERT` to the public role and `SELECT` only to authorized admins. Set an appropriate retention and deletion policy for enquiries before going live.
+2. In Authentication → Users, add your admin email account, set a strong password and copy its **User UID**. Run `insert into public.mdk_admins (user_id) values ('YOUR-ADMIN-USER-UUID');` in the SQL Editor, replacing the placeholder with that UID. Turn off public signups. Do not put the admin password or UID in the website files.
+3. Copy the project URL and **publishable key** into the environment variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the website hosting settings, then **rebuild and redeploy**. If running locally, put those two values in `.env.local` and restart `npm run dev`. These are the only Supabase settings allowed in the browser; **never** put the secret/service role key in a `VITE_` variable.
+4. Visit `/admin`, sign in and check that the inbox opens. Submit a short test enquiry from a private browser window, then select **Refresh inbox** to see it. Try visiting the Supabase REST endpoint without a signed-in token: it must not return any enquiry rows.
+5. For email/SMS as well, deploy the complete project to Vercel, configure the server-only Resend and Twilio settings from `.env.example` and test both phones. The inbox stores the enquiry even when those optional delivery providers are not available. A static host can save enquiries to Supabase but cannot send SMS on its own.
+
+The form first writes to Supabase when configured, then attempts email and SMS if the Vercel API exists. If the notification fails, the visitor is told that the enquiry was saved in the admin inbox and notifications were not confirmed. If Supabase cannot save, the form does not claim success.
+
+**Before public launch:** public form insert access can attract spam; add abuse prevention/rate limiting at the hosting or edge layer. Review your privacy notice and retention period. Email and phone details collected here are personal data. Admin login credentials must be protected and access limited to authorized people.
