@@ -365,139 +365,167 @@ export function createAppServer({
   }
 
   /*
-   * OPTIONAL EMAIL/SMS NOTIFICATIONS
+   * OPTIONAL EMAIL/SMS NOTIFICATIONS ------------------------------------------------------------------------
    */
-  async function notifications(data){
+    async function notifications(data) {
+    let emailAccepted = false;
+    let smsAccepted = false;
+    let pushAccepted = false;
 
-    let emailAccepted=false;
-    let smsAccepted=false;
-
-    if(
+    if (
       config.RESEND_API_KEY &&
       config.ENQUIRY_FROM &&
       config.ENQUIRY_TO
-    ){
-
-      try{
-
-        const full=fields
+    ) {
+      try {
+        const full = fields
           .map(
-            f=>`${f}: ${data[f]||'Not provided'}`
+            f => `${f}: ${data[f] || 'Not provided'}`
           )
           .join('\n\n');
 
-        const r=await fetchImpl(
+        const r = await fetchImpl(
           'https://api.resend.com/emails',
           {
-            method:'POST',
-
-            headers:{
+            method: 'POST',
+            headers: {
               Authorization:
                 `Bearer ${config.RESEND_API_KEY}`,
-
               'Content-Type':
                 'application/json'
             },
-
-            body:JSON.stringify({
-              from:config.ENQUIRY_FROM,
-              to:[config.ENQUIRY_TO],
-              reply_to:data.email,
-              subject:'New MDK consultation enquiry',
-              text:full
+            body: JSON.stringify({
+              from: config.ENQUIRY_FROM,
+              to: [config.ENQUIRY_TO],
+              reply_to: data.email,
+              subject: 'New MDK consultation enquiry',
+              text: full
             }),
-
-            signal:AbortSignal.timeout(12000)
+            signal: AbortSignal.timeout(12000)
           }
         );
 
-        emailAccepted=r.ok;
-
-      }catch{
+        emailAccepted = r.ok;
+      } catch {
         console.error(
           'Email notification was not accepted.'
         );
       }
     }
 
-    if(
+    if (
       config.TWILIO_ACCOUNT_SID &&
       config.TWILIO_AUTH_TOKEN &&
       config.TWILIO_FROM &&
       config.ENQUIRY_SMS_TO
-    ){
-
-      const numbers=
+    ) {
+      const numbers =
         config.ENQUIRY_SMS_TO
           .split(',')
-          .map(x=>x.trim())
+          .map(x => x.trim())
           .filter(Boolean)
-          .slice(0,2);
+          .slice(0, 2);
 
-      const message=
-        `New MDK enquiry from ${data.name} (${data.organization}). View full details in the MDK admin inbox.`;
+      const message =
+        `New MDK enquiry from ${data.name} ` +
+        `(${data.organization}). ` +
+        `View full details in the MDK admin inbox.`;
 
-      const results=await Promise.allSettled(
+      const results = await Promise.allSettled(
         numbers.map(
-          async to=>{
-
-            const r=await fetchImpl(
+          async to => {
+            const r = await fetchImpl(
               `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(config.TWILIO_ACCOUNT_SID)}/Messages.json`,
               {
-                method:'POST',
-
-                headers:{
+                method: 'POST',
+                headers: {
                   Authorization:
-                    'Basic '+
+                    'Basic ' +
                     Buffer.from(
                       `${config.TWILIO_ACCOUNT_SID}:${config.TWILIO_AUTH_TOKEN}`
                     ).toString('base64'),
-
                   'Content-Type':
                     'application/x-www-form-urlencoded'
                 },
-
-                body:new URLSearchParams({
-                  To:to,
-                  From:config.TWILIO_FROM,
-                  Body:message
+                body: new URLSearchParams({
+                  To: to,
+                  From: config.TWILIO_FROM,
+                  Body: message
                 }),
-
                 signal:
                   AbortSignal.timeout(10000)
               }
             );
 
-            if(!r.ok){
-              throw new Error(
-                'SMS rejected'
-              );
+            if (!r.ok) {
+              throw new Error('SMS rejected');
             }
           }
         )
       );
 
-      smsAccepted=
-        results.length>0 &&
+      smsAccepted =
+        results.length > 0 &&
         results.every(
-          x=>x.status==='fulfilled'
+          x => x.status === 'fulfilled'
         );
 
-      if(!smsAccepted){
+      if (!smsAccepted) {
         console.error(
           'One or more SMS notifications were not accepted.'
         );
       }
     }
 
+    if (config.NTFY_TOPIC) {
+      try {
+        const message =
+          `New MDK appointment enquiry\n\n` +
+          `Name: ${data.name || 'Not provided'}\n` +
+          `Organization: ${data.organization || 'Not provided'}\n` +
+          `Service: ${data.service || 'Not provided'}\n` +
+          `Date: ${data.date || 'Not provided'}\n` +
+          `Time: ${data.time || 'Not provided'}\n` +
+          `Mode: ${data.mode || 'Not provided'}\n` +
+          `Phone: ${data.phone || 'Not provided'}\n` +
+          `Email: ${data.email || 'Not provided'}`;
+
+        const r = await fetchImpl(
+          `https://ntfy.sh/${encodeURIComponent(config.NTFY_TOPIC)}`,
+          {
+            method: 'POST',
+            headers: {
+              Title: '🔔 New MDK Appointment',
+              Priority: 'high',
+              Tags: 'calendar,warning'
+            },
+            body: message,
+            signal: AbortSignal.timeout(10000)
+          }
+        );
+
+        pushAccepted = r.ok;
+
+        if (!pushAccepted) {
+          console.error(
+            'Push notification was not accepted.'
+          );
+        }
+      } catch {
+        console.error(
+          'Push notification failed.'
+        );
+      }
+    }
+
     return {
       emailAccepted,
-      smsAccepted
+      smsAccepted,
+      pushAccepted
     };
   }
-
   /*
-   * ADMIN SESSION STORAGE
+   * ADMIN SESSION STORAGE ----------------------------------------
    */
   const validSessions=new Map();
 
