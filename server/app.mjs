@@ -1,6 +1,6 @@
 import {createServer} from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
-import {randomBytes,createHash,timingSafeEqual,scryptSync} from 'node:crypto';
+import {randomBytes,randomUUID,createHash,timingSafeEqual,scryptSync} from 'node:crypto';
 import {readFile,stat} from 'node:fs/promises';
 import {resolve,join,extname} from 'node:path';
 import {validateEnquiry} from '../src/validate-enquiry.mjs';
@@ -254,7 +254,7 @@ export function createAppServer({
    */
   async function storeEnquiry(data){
 
-    const id=randomBytes(16).toString('hex');
+    const id=randomUUID();
 
     const createdAt=new Date().toISOString();
 
