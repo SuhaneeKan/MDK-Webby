@@ -367,11 +367,15 @@ export function createAppServer({
   /*
    * OPTIONAL EMAIL/SMS NOTIFICATIONS ------------------------------------------------------------------------
    */
-    async function notifications(data) {
+  /*
+   * OPTIONAL EMAIL/SMS/PUSH NOTIFICATIONS
+   */
+  async function notifications(data) {
     let emailAccepted = false;
     let smsAccepted = false;
     let pushAccepted = false;
 
+    // EMAIL NOTIFICATION
     if (
       config.RESEND_API_KEY &&
       config.ENQUIRY_FROM &&
@@ -406,13 +410,17 @@ export function createAppServer({
         );
 
         emailAccepted = r.ok;
-      } catch {
+      } catch (error) {
         console.error(
-          'Email notification was not accepted.'
+          'Email notification was not accepted:',
+          error instanceof Error
+            ? error.message
+            : error
         );
       }
     }
 
+    // SMS NOTIFICATION
     if (
       config.TWILIO_ACCOUNT_SID &&
       config.TWILIO_AUTH_TOKEN &&
@@ -477,6 +485,7 @@ export function createAppServer({
       }
     }
 
+    // NTFY PUSH NOTIFICATION
     if (config.NTFY_TOPIC) {
       try {
         const message =
@@ -495,25 +504,32 @@ export function createAppServer({
           {
             method: 'POST',
             headers: {
-              Title: '🔔 New MDK Appointment',
-              Priority: 'high',
-              Tags: 'calendar,warning'
+              'Content-Type':
+                'text/plain; charset=utf-8',
+              'Title': 'New MDK Appointment',
+              'Priority': 'high',
+              'Tags': 'calendar,warning'
             },
             body: message,
             signal: AbortSignal.timeout(10000)
           }
         );
 
+        const responseText = await r.text();
+
         pushAccepted = r.ok;
 
         if (!pushAccepted) {
           console.error(
-            'Push notification was not accepted.'
+            `Push notification rejected (${r.status}): ${responseText}`
           );
         }
-      } catch {
+      } catch (error) {
         console.error(
-          'Push notification failed.'
+          'Push notification failed:',
+          error instanceof Error
+            ? error.message
+            : error
         );
       }
     }
