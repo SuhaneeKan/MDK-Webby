@@ -4,6 +4,7 @@ import {randomBytes,randomUUID,createHash,timingSafeEqual,scryptSync} from 'node
 import {readFile,stat} from 'node:fs/promises';
 import {resolve,join,extname} from 'node:path';
 import {validateEnquiry} from '../src/validate-enquiry.mjs';
+import nodemailer from 'nodemailer';
 
 const fields=['name','organization','designation','email','phone','industry','service','topic','date','time','mode','message'];
 
@@ -373,50 +374,49 @@ export function createAppServer({
     let pushAccepted = false;
 
     // EMAIL NOTIFICATION
+    // GMAIL SMTP EMAIL NOTIFICATION
     if (
-      config.RESEND_API_KEY &&
-      config.ENQUIRY_FROM &&
+      config.GMAIL_USER &&
+      config.GMAIL_APP_PASSWORD &&
       config.ENQUIRY_TO
     ) {
       try {
         const full = fields
-          .map(
-            f => `${f}: ${data[f] || 'Not provided'}`
-          )
+          .map(f => `${f}: ${data[f] || 'Not provided'}`)
           .join('\n\n');
 
-        const r = await fetchImpl(
-          'https://api.resend.com/emails',
-          {
-            method: 'POST',
-            headers: {
-              Authorization:
-                `Bearer ${config.RESEND_API_KEY}`,
-              'Content-Type':
-                'application/json'
-            },
-            body: JSON.stringify({
-              from: config.ENQUIRY_FROM,
-              to: [config.ENQUIRY_TO],
-              reply_to: data.email,
-              subject: 'New MDK consultation enquiry',
-              text: full
-            }),
-            signal: AbortSignal.timeout(12000)
-          }
-        );
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: {
+            user: config.GMAIL_USER,
+            pass: config.GMAIL_APP_PASSWORD
+          },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000
+        });
 
-        emailAccepted = r.ok;
+        await transporter.sendMail({
+          from: `"MDK Quality Consulting" <${config.GMAIL_USER}>`,
+          to: config.ENQUIRY_TO,
+          replyTo: data.email,
+          subject: 'New MDK consultation enquiry',
+          text: full
+        });
+
+        emailAccepted = true;
+        console.log('Gmail email notification accepted.');
+        transporter.close();
+
       } catch (error) {
         console.error(
-          'Email notification was not accepted:',
-          error instanceof Error
-            ? error.message
-            : error
+          'Gmail email notification failed:',
+          error instanceof Error ? error.message : error
         );
       }
     }
-
     // SMS NOTIFICATION
     if (
       config.TWILIO_ACCOUNT_SID &&
@@ -659,12 +659,11 @@ export function createAppServer({
                     ? 'supabase'
                     : 'sqlite',
 
-                emailConfigured:
-                  !!(
-                    config.RESEND_API_KEY &&
-                    config.ENQUIRY_FROM &&
-                    config.ENQUIRY_TO
-                  ),
+                emailConfigured: !!(
+                  config.GMAIL_USER &&
+                  config.GMAIL_APP_PASSWORD &&
+                  config.ENQUIRY_TO
+                ),
 
                 smsConfigured:
                   !!(
