@@ -45,11 +45,11 @@ export function validateEnquiry(data, now = Date.now()) {
     'message',
   ];
 
-  for (const field of requiredFields) {
-    if (!data[field] || !data[field].trim()) {
-      return 'Please complete ' + field + '.';
-    }
+  for (const field of ['name', 'organization', 'email', 'industry', 'service', 'message']) {
+  if (!data[field]?.trim()) {
+    return 'Please complete ' + field + '.';
   }
+}
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
     return 'Please enter a valid email address.';
